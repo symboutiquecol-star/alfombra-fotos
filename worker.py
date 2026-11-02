@@ -1,6 +1,6 @@
 """FOTO-04 · Procesa en GitHub Actions las fotos nuevas de Drive (La Boutique de Sofii).
-Pide a la Edge Function 'fotos-alfombra' los diseños pendientes, genera la alfombra crema (principal) + azul
-(o tapete navideño) y devuelve las fotos a la misma función, que las guarda en Supabase.
+Pide a la Edge Function 'fotos-alfombra' los diseños pendientes, genera solo la alfombra crema
+(o el tapete navideño; o deja la original si es foto con modelo, FOTO-05) y devuelve las fotos a la misma función, que las guarda en Supabase.
 Solo usa el secreto SYNC_KEY; no tiene llaves de Supabase."""
 import os, sys, time, json, base64, random, urllib.request, urllib.parse
 import core
@@ -40,7 +40,7 @@ def procesar(p):
     out = [{'tipo': t,
             'w': base64.b64encode(core.webp(fotos[t], (810, 1080), 66)).decode(),
             's': base64.b64encode(core.webp(fotos[t], (380, 507), 64)).decode()}
-           for t in ('principal', 'crema', 'azul') if t in fotos]
+           for t in ('principal',) if t in fotos]
     if not out:
         return edge({'accion': 'error', 'id': p['id'], 'foto_file_id': p['foto_file_id'], 'motivo': motivo or 'sin fotos'})
     r = edge({'accion': 'guardar', 'id': p['id'], 'foto_file_id': p['foto_file_id'], 'navidad': bool(p.get('navidad')),
