@@ -1,0 +1,33 @@
+name: Fotos con alfombra
+on:
+  repository_dispatch:
+    types: [fotos]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */6 * * *'   # respaldo cada 6 h por si un aviso de Apps Script se pierde
+concurrency:
+  group: fotos
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  procesar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - id: rug
+        uses: actions/cache@v4
+        with:
+          path: rug_full.npy
+          key: rug-3300x4400-s11-v1
+      - if: steps.rug.outputs.cache-hit != 'true'
+        run: python rug.py 3300 4400 rug_full 11
+      - run: python worker.py
+        env:
+          SYNC_KEY: ${{ secrets.SYNC_KEY }}
