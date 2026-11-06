@@ -120,10 +120,14 @@ def render(im, navidad=False, seed=0):
     # (futbolistas, anime), no un modelo. Solo se busca persona cuando la madera no domina el borde.
     mb = madera_borde(im)
     calidad['madera_borde_pct'] = round(mb, 3)
-    if mb >= 0.5:   # prendas extendidas sobre tablas dan ~0,9; una foto con modelo en un cuarto, mucho menos
+    # Medido en 21 fotos reales sobre tablas: 0,31 a 0,77. Gaticos (modelo en un cuarto) no tiene madera en el borde.
+    duda_modelo = False
+    if mb >= 0.5:
         hay, det = 'no', 'prenda sobre tablas'
     else:
         hay, det = persona(im)
+        if hay == 'si' and mb >= 0.25:   # cara y bastante madera: puede ser estampado; alfombra, pero a revisión
+            hay, duda_modelo = 'duda', True
     calidad['persona'] = hay
     if hay == 'si':
         foto, giro = vertical(im)
@@ -161,7 +165,9 @@ def render(im, navidad=False, seed=0):
     s = 1000 / max(H, W)
     calidad.update({'madera_borde': int(nseed), 'prenda': round(fgf, 3), 'ref_blanco': ref is not None})
     motivos = []
-    if hay == 'duda':
+    if duda_modelo:
+        motivos.append('Se detectó una cara: revisar si es estampado (publicar con alfombra) o foto con modelo (dejar la original)')
+    elif hay == 'duda':
         motivos.append('Posible persona en la foto (revisar si es foto con modelo)')
     hs, ws = int(H * s), int(W * s)
     borde = 2 * 12 * ws + 2 * 12 * (hs - 24)
