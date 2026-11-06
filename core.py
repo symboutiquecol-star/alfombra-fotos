@@ -97,6 +97,18 @@ def vertical(rgb, ratio=0.75):
     out = ref.astype(np.float32) * m + fill * (1 - m) + grano
     return np.clip(out + 0.5, 0, 255).astype(np.uint8), True
 
+def madera_borde(im):
+    """Fracción del borde de la foto (franja de 12 px a escala 1000) que es piso de madera."""
+    H, W = im.shape[:2]
+    s = 1000 / max(H, W)
+    sm = cv2.resize(im, (int(W * s), int(H * s)), interpolation=cv2.INTER_AREA)
+    h, w = sm.shape[:2]
+    try:
+        nseed = wood_model(sm)[3]
+    except Exception:
+        return 0.0
+    return nseed / max(1, 2 * 12 * w + 2 * 12 * (h - 24))
+
 def render(im, navidad=False, seed=0):
     """FOTO-05. Devuelve (fotos: dict nombre->RGB uint8, calidad, revisar, motivo).
     - Foto con modelo: la original (en vertical 3:4 si viene horizontal), sin alfombra.
@@ -104,7 +116,14 @@ def render(im, navidad=False, seed=0):
     - Resto: solo la alfombra crema ajustada. Ya no se genera la azul."""
     H, W = im.shape[:2]
     calidad = {'ancho': W, 'alto': H}
-    hay, det = persona(im)
+    # R102: una prenda extendida sobre el piso de tablas tiene madera en el borde; ahí las caras son estampados
+    # (futbolistas, anime), no un modelo. Solo se busca persona cuando la madera no domina el borde.
+    mb = madera_borde(im)
+    calidad['madera_borde_pct'] = round(mb, 3)
+    if mb >= 0.5:   # prendas extendidas sobre tablas dan ~0,9; una foto con modelo en un cuarto, mucho menos
+        hay, det = 'no', 'prenda sobre tablas'
+    else:
+        hay, det = persona(im)
     calidad['persona'] = hay
     if hay == 'si':
         foto, giro = vertical(im)
